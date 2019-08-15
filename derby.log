@@ -1,0 +1,13 @@
+----------------------------------------------------------------
+Mon Jul 22 16:40:35 IST 2019:
+Booting Derby version The Apache Software Foundation - Apache Derby - 10.12.1.1 - (1704137): instance a816c00e-016c-1960-4515-00000e87fd98 
+on database directory /home/orienit/PycharmProjects/Deployment/src/main/python/Streeming/metastore_db with class loader org.apache.spark.sql.hive.client.IsolatedClientLoader$$anon$1@6dc5f959 
+Loaded from file:/home/orienit/spark/spark-2.1.1-bin-hadoop2.6/jars/derby-10.12.1.1.jar
+java.vendor=Oracle Corporation
+java.runtime.version=1.8.0_212-8u212-b03-0ubuntu1.16.04.1-b03
+user.dir=/home/orienit/PycharmProjects/Deployment/src/main/python/Streeming
+os.name=Linux
+os.arch=amd64
+os.version=4.4.0-59-generic
+derby.system.home=null
+Database Class Loader started - derby.database.classpath=''
