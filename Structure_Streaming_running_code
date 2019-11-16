@@ -1,0 +1,64 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.types import *
+from pyspark.sql import functions as fn
+
+
+spark = SparkSession.builder.appName('Test').master("local[*]").getOrCreate()
+
+path = '/home/orienit/Desktop/Itversity/Input/bensullins.com-freebies-master/sales_log'
+
+salesSchema = StructType([
+    StructField("OrderID", DoubleType(), True),
+    StructField("OrderDate", StringType(), True),
+    StructField("Quantity", DoubleType(), True),
+    StructField("DiscountPct", DoubleType(), True),
+    StructField("Rate", DoubleType(), True),
+    StructField("SalesAmout", DoubleType(), True),
+    StructField("CustomerName", StringType(), True),
+    StructField("State", StringType(), True),
+    StructField("Region", StringType(), True),
+    StructField("ProductKey", StringType(), True),
+    StructField("RowCount", DoubleType(), True),
+    StructField("ProfitMargin", DoubleType(), True)])
+
+
+data = spark.read.schema(salesSchema).csv(path)
+
+data.show()
+
+data.createOrReplaceTempView("sales")
+
+spark.sql("select * from sales").show()
+
+############### Setup Streaming job #################################
+
+streamingInputDF = (
+    spark
+        .readStream
+        .schema(salesSchema)
+        .option("maxFilesPerTrigger",1)
+        .csv(path)
+)
+
+
+streamingCountDF = (
+    streamingInputDF
+    .select("ProductKey", "SalesAmout")
+    .groupBy("ProductKey")
+    .sum()
+)
+
+print(streamingCountDF.isStreaming)
+
+query = (
+    streamingCountDF
+    .writeStream
+    .format("console")
+    .queryName("sales_stream")
+    .outputMode("complete")
+    .start()
+)
+
+
+query.awaitTermination()
+
