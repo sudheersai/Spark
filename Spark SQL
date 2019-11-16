@@ -1,0 +1,312 @@
+As part of this session we will see basic transformations we can perform on top of Data Frames such as filtering, aggregations, joins etc using SQL. We will build end to end application by taking a simple problem statement.
+
+    Spark SQL – Overview
+    Problem Statement – Get daily product revenue
+    Relationship with Hive
+    Projecting data using select
+    Filtering data using where
+    Joining Data Sets
+    Grouping data and performing aggregations
+    Sorting data
+
+
+
+Spark SQL – Overview
+
+Let us recap about Data Frame Operations. It is one of the 2 ways we can process Data Frames.
+
+    Selection or Projection – select clause
+    Filtering data – where clause
+    Joins – join (supports outer join as well)
+    Aggregations – group by and aggregations with support of functions such as sum, avg, min, max etc
+    Sorting – order by
+    Analytics Functions – aggregations, ranking and windowing functions
+
+Problem Statement – Get daily product revenue
+
+Here is the problem statement for which we will be exploring Data Frame APIs to come up with final solution.
+
+    Get daily product revenue
+    orders – order_id, order_date, order_customer_id, order_status
+    order_items – order_item_id, order_item_order_id, order_item_product_id, order_item_quantity, order_item_subtotal, order_item_product_price
+    Data is comma separated
+    We will fetch data using spark.read.csv
+    Apply type cast functions to convert fields into their original type where ever is applicable.
+
+
+
+
+spark = SparkSession. \
+  builder. \
+  master('local'). \
+  appName('CSV Example'). \
+  getOrCreate()
+
+orders = spark.read. \
+  format('csv'). \
+  schema('order_id int, order_date string, order_customer_id int, order_status string'). \
+  load('/Users/itversity/Research/data/retail_db/orders')
+
+orders.printSchema()
+orders.show()
+
+orderItems = spark.read. \
+  format('csv'). \
+  schema('''order_item_id int, 
+            order_item_order_id int, 
+            order_item_product_id int, 
+            order_item_quantity int,
+            order_item_subtotal float,
+            order_item_product_price float
+         '''). \
+  load('/Users/itversity/Research/data/retail_db/order_items')
+
+orderItems.printSchema()
+orderItems.show()
+
+
+--------------------------------------------------------------------
+
+# In case you are using pycharm, first you need to create object of type SparkSession
+spark = SparkSession. \
+  builder. \
+  master('local'). \
+  appName('CSV Example'). \
+  getOrCreate()
+
+ordersCSV = spark.read. \
+  csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+orderItemsCSV = spark.read. \
+  csv('/public/retail_db/order_items'). \
+  toDF('order_item_id', 'order_item_order_id', 'order_item_product_id', 
+       'order_item_quantity', 'order_item_subtotal', 'order_item_product_price')
+
+from pyspark.sql.types import IntegerType, FloatType
+
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.printSchema()
+orders.show()
+
+orderItems = orderItemsCSV.\
+    withColumn('order_item_id', orderItemsCSV.order_item_id.cast(IntegerType())). \
+    withColumn('order_item_order_id', orderItemsCSV.order_item_order_id.cast(IntegerType())). \
+    withColumn('order_item_product_id', orderItemsCSV.order_item_product_id.cast(IntegerType())). \
+    withColumn('order_item_quantity', orderItemsCSV.order_item_quantity.cast(IntegerType())). \
+    withColumn('order_item_subtotal', orderItemsCSV.order_item_subtotal.cast(FloatType())). \
+    withColumn('order_item_product_price', orderItemsCSV.order_item_product_price.cast(FloatType()))
+
+orderItems.printSchema()
+orderItems.show()
+
+------------------------------------------------------------------------------
+
+
+
+    We can register both orders and orderItems as temporary views.
+        Switch to database in hive – spark.sql('use bootcampdemo')
+        orders as orders – orders.createOrReplaceTempView('orders')
+        orderItems as order_items – orderItems.createOrReplaceTempView('order_items')
+        List tables – spark.sql('show tables').show()
+        Describe table – spark.sql('describe orders').show()
+
+Relationship with Hive
+
+Let us see how Spark is related to Hive.
+
+    Hive is a logical database on top of HDFS
+    All hive databases, tables and even partitions are nothing but directories in HDFS
+    We can create tables in Hive with column names and data types
+    Table names, column names, data types, location, file format, delimiter information is considered as metadata
+    This metadata is stored in metastore which is typically relational database such as MySQL, Postgres, Oracle etc
+    Once table is created, data can be queried or processed using HiveQL
+    HiveQL will be compiled into Spark or Map Reduce job based on the execution engine.
+    If Hive is integrated with Spark on the cluster using SparkSession object’s sql API we should be able to query and process data from Hive tables using Spark engine
+    Query output will be converted to Data Frame
+    SparkSession object’s sql API can execute standard hive commands such as show tables, show functions etc
+    Standard Hive commands (except SQL)
+        spark is of type SparkSession
+        List of tables – spark.sql("show tables").show()
+        Switch database – spark.sql("use bootcampdemo").show()
+        Describe table – spark.sql("describe table orders").show()
+        Show functions – for f in spark.sql("show functions").collect(): print(f)
+        Describe function – for f in spark.sql("describe function substring").collect(): print(f)
+    We can also create/drop tables, insert/load data into tables using Hive syntax as part of sql function of SparkSession object
+    As part of SparkSession object’s read, there is an API which facilitate us to read raw data from Hive table into Data Frame
+    write package of data frame provides us APIs such as saveAsTable, insertInto etc to directly write data frame into Hive table.
+
+Selection or Projection – select clause
+
+Now let us see how we can project data the way we want using select.
+
+    We can run queries directly from hive tables or register data frames as temporary views/tables.
+    We can use select and fetch data from the fields we are looking for.
+    We can represent data using DataFrame.ColumnName or directly ‘ColumnName’ in select clause – e.g.: spark.sql('select order_id, order_date from orders').show()
+    We can apply necessary functions to manipulate data while it is being projected – spark.sql('select substring(order_date, 1, 7) from orders').show()
+    We can give aliases to the derived fields using alias function – spark.sql('select substring(order_date, 1, 7) as order_month from orders').show()
+
+Filtering data – where clause
+
+We can use where clause to filter the data.
+
+    One by using class.attributeName and comparing with values – e. g.: spark.sql('select * from orders where order_status = "COMPLETE"').show()
+    Make sure both orders and orderItems data frames are created
+    Let us see few more examples
+        Get orders which are either COMPLETE or CLOSED
+        Get orders which are either COMPLETE or CLOSED and placed in month of 2013 August
+        Get order items where order_item_subtotal is not equal to product of order_item_quantity and order_item_product_price
+        Get all the orders which are placed on first of every month
+
+
+------------------------------------------------------------------------------------------------------------
+
+# Get orders which are either COMPLETE or CLOSED
+spark.sql('select * from orders where order_status = "COMPLETE" or order_status = "CLOSED"').show()
+spark.sql('select * from orders where order_status in ("COMPLETE", "CLOSED")').show()
+
+
+# Get orders which are either COMPLETE or CLOSED and placed in month of 2013 August
+
+spark.sql('select * from orders where order_status in ("COMPLETE", "CLOSED") and order_date like "2013-08%"').show()
+
+# Get order items where order_item_subtotal is not equal to product of order_item_quantity and order_item_product_price
+spark.sql('''select * from order_items where 
+             order_item_subtotal != round(order_item_quantity * order_item_product_price, 2)''').show()
+
+# Get all the orders which are placed on first of every month
+spark.sql('''select * from orders 
+             where date_format(order_date, "dd") = "01"''').show()
+
+
+
+Joining Data Sets
+
+Quite often we need to deal with multiple data sets which are related with each other.
+
+    We need to first understand the relationship with respect to data sets
+    All our data sets have relationships defined between them.
+        orders and order_items are transaction tables. orders is parent and order_items is child. Relationship is established between the two using order_id (in order_items, it is represented as order_item_order_id)
+        We also have product catalog normalized into 3 tables – products, categories and departments (with relationships established in that order)
+        We also have customers table
+        There is relationship between customers and orders – customers is parent data set as one customer can place multiple orders.
+        There is relationship between product catalog and order_items via products – products is parent data set as one product can be ordered as part of multiple order_items.
+    Determine the type of join – inner or outer (left or right or full)
+    We can perform joins using ascii syntax with join along with on clause
+    We can also perform outer joins (left or right or full)
+    Let us see few examples
+        Get all the order items corresponding to COMPLETE or CLOSED orders
+        Get all the orders where there are no corresponding order_items
+        Check if there are any order_items where there is no corresponding order in orders data set
+
+
+# Get all the order items corresponding to COMPLETE or CLOSED orders
+
+spark.sql('select * from orders o join order_items oi '
+          'on o.order_id = oi.order_item_order_id '
+          'where o.order_status in ("COMPLETE", "CLOSED")'). \
+show()
+
+# Get all the orders where there are no corresponding order_items
+
+spark.sql('select * from orders o left outer join order_items oi '
+          'on o.order_id = oi.order_item_order_id '
+          'where oi.order_item_order_id is null'). \
+show()
+
+# Check if there are any order_items where there is no corresponding order in orders data set
+
+spark.sql('select * from orders o right outer join order_items oi '
+          'on o.order_id = oi.order_item_order_id '
+          'where o.order_id is null'). \
+show()
+
+
+
+Aggregations using group by and functions
+
+Many times we want to perform aggregations such as sum, average, minimum, maximum etc with in each group. We need to first group the data and then perform aggregation.
+
+    group by is the function which can be used to group the data on one or more columns
+    Once data is grouped we can perform all supported aggregations – sum, avg, min, max etc
+    Let us see few examples
+        Get count by status from orders
+        Get revenue for each order id from order items
+        Get daily product revenue (order_date and order_item_product_id are part of keys, order_item_subtotal is used for aggregation)
+
+
+# Get count by status from orders
+spark.sql('select order_status, count(1) status_count '
+          'from orders group by order_status'). \
+show()
+
+# Get revenue for each order id from order items 
+spark.sql('select order_item_order_id, sum(order_item_subtotal) order_revenue '
+          'from order_items group by order_item_order_id'). \
+show()
+
+# Get daily product revenue 
+# filter for complete and closed orders
+# groupBy order_date and order_item_product_id
+# Use agg and sum on order_item_subtotal to get revenue
+
+spark.conf.set('spark.sql.shuffle.partitions', '2')
+
+spark.sql('select o.order_date, oi.order_item_product_id, '
+          'sum(oi.order_item_subtotal) order_revenue '
+          'from orders o join order_items oi '
+          'on o.order_id = oi.order_item_order_id '
+          'where o.order_status in ("COMPLETE", "CLOSED") '
+          'group by o.order_date, oi.order_item_product_id'). \
+show()
+
+
+Sorting data
+
+Now let us see how we can sort the data using sort or orderBy.
+
+    order by can be used to sort the data
+    We can perform composite sorting by using multiple fields
+    By default data will be sorted in ascending order
+    We can change the order by using desc
+    Let us see few examples
+        Sort orders by status
+        Sort orders by date and then by status
+        Sort order items by order_item_order_id and order_item_subtotal descending
+        Take daily product revenue data and sort in ascending order by date and then descending order by revenue.
+
+
+spark.sql('''select * from orders 
+             order by order_status''').show()
+
+
+#Sort orders by date and then by status
+spark.sql('''select * from orders 
+             order by order_date, order_status''').show()
+
+# Sort order items by order_item_order_id and order_item_subtotal descending
+spark.sql('''select * from order_items 
+             order by order_item_order_id, order_item_subtotal desc''').show()
+
+
+# Take daily product revenue data and 
+# sort in ascending order by date and 
+# then descending order by revenue.
+
+spark.conf.set('spark.sql.shuffle.partitions', '2')
+
+dailyProductRevenue = spark.sql('''select o.order_date, oi.order_item_product_id, 
+             round(sum(oi.order_item_subtotal), 2) as revenue
+             from orders o join order_items oi
+             on o.order_id = oi.order_item_order_id
+             where o.order_status in ("COMPLETE", "CLOSED")
+             group by o.order_date, oi.order_item_product_id
+             order by o.order_date, revenue desc''')
+
+dailyProductRevenue.show()
+
+
+

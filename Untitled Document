@@ -1,0 +1,19 @@
+vvdorareddy6666@gw02.itversity.com
+
+
+vvdorareddy6666/ahGh9ae0piw6aesai0phazahkiquaih6
+
+ssh vvdorareddy6666@gw02.itversity.com
+
+
+mysql -h ms.iterversity.com -u retail_user -p
+password : itversity
+
+
+OrderItems = spark.read\
+	format('jdbc').\
+	option('url','jdbc:mysql://ms.itversity.com:3306'). \
+	option('dbtable',''retail_db.order_itmes'). \
+	option('username',''retail_user'). \
+	option('password','itversity'). \
+	load()

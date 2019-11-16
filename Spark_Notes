@@ -1,0 +1,453 @@
+As part of this topic we will understand different modules, spark architecture and how it is mapped to different execution modes such as YARN, Mesos etc.
+
+Spark is nothing but distributed computing framework. To leverage the framework we need to learn API categorized into different modules and build applications using supported programming languages (like Scala, Python, Java etc).
+
+    Spark Official Documentation
+    Spark Modules
+        Core – Transformations and Actions
+        Spark SQL and Data Frames
+        Structured Streaming
+        Machine Learning Pipelines
+        GraphX Pipelines
+        and more
+    Spark Data Structures
+        Resilient Distributed Datasets (An in memory distributed collection)
+        Data Frame (A wrapper on top of RDD with structure)
+    Spark Framework and Execution Modes
+
+
+Spark Modules
+
+In the earlier versions of Spark we have core API at the bottom and all the higher level modules work with core API. Examples of core API are map, reduce, join, groupByKey etc. But with Spark 2, Data Frames and Spark SQL is becoming the core module.
+
+    Core – Transformations and Actions – APIs such as map, reduce, join, filter etc. They typically work on RDD
+    Spark SQL and Data Frames – APIs and Spark SQL interface for batch processing on top of Data Frames or Data Sets (not available for Python)
+    Structured Streaming – APIs and Spark SQL interface for stream data processing on top of Data Frames
+    Machine Learning Pipelines – Machine Learning data pipelines to apply Machine Learning algorithms on top of Data Frames
+    GraphX Pipelines
+
+Spark Data Structures
+
+We need to deal with 2 types of data structures in Spark – RDD and Data Frames.  We will see Data Structures in detail as part of the next topic.
+
+    RDD is there for quite some time and it is the low level data structure which spark uses to distribute the data between tasks while data is being processed
+    RDD will be divided into partitions while data being processed. Each partition will be processed by one task.
+    Data Frame is nothing but RDD with structure
+    Typically we read data from file systems such as HDFS, S3, Azure Blob, Local file system etc
+    Based on the file formats we need to use different APIs available in Spark to read data into RDD or Data Frame
+    Spark uses HDFS APIs to read and/or write data from underlying file system
+
+Simple Application
+
+Let us start with simple application to understand details related to architecture using pyspark.
+
+    As we have multiple versions of Spark on our lab and we are exploring Spark 2 we need to export SPARK_MAJOR_VERSION with 2
+    Launch pyspark using YARN and num-executors 2 (use spark.ui.port as well to specify unique port)
+    Develop simple word count program by reading data from /public/randomtextwriter/part-m-00000
+    Save output to /user/training/bootcamp/pyspark/wordcount
+
+Using this I will walk you through Spark Framework.
+Spark Framework
+
+Let us understand these different components of Spark Framework. Also we will understand different execution modes.
+
+    Driver Program
+    Spark Context
+    Executors
+    Executor Cache
+    Executor Tasks
+    Job
+    Stage
+    Task (Executor Tasks)
+
+Following are the different execution modes supported by Spark
+
+    Local (for development)
+    Standalone (for development)
+    Mesos
+    YARN
+
+
+-------------------------
+
+pyspark --master yarn --conf spark.ui.port=12013 --num-executors 2
+
+List is a linear collection where as RDD is distributed Collection
+
+----Nodes
+
+5 worker nodes
+3 Gateway nodes
+3 Master nodes
+
+Gateway nodes : /usr/hdp/2.6.5.0-292/spark/lib
+ 
+Property files: /etc/spark2/conf - To control the runtime behaviour of your spark.
+
+rwxr-xr-x 1 root  root   3861 Aug 25  2016 spark-env.sh.template
+-rw-r--r-- 1 root  root   1292 Aug 25  2016 spark-defaults.conf.template
+-rw-r--r-- 1 root  root    865 Aug 25  2016 slaves.template
+-rw-r--r-- 1 root  root   7239 Aug 25  2016 metrics.properties.template
+-rw-r--r-- 1 root  root   2025 Aug 25  2016 log4j.properties.template
+-rw-r--r-- 1 root  root   1105 Aug 25  2016 fairscheduler.xml.template
+-rw-r--r-- 1 root  root    987 Aug 25  2016 docker.properties.template
+-rw-r--r-- 1 spark spark  4956 Jun  5  2017 metrics.properties
+-rw-r--r-- 1 spark spark   733 Jun  5  2017 hive-site.xml
+-rwxr-xr-x 1 spark spark   244 Jun  5  2017 spark-thrift-fairscheduler.xml
+-rw-r--r-- 1 spark spark   632 Aug  3 15:51 log4j.properties
+-rw-r--r-- 1 spark spark  1791 Nov 16 22:35 spark-env.sh
+-rw-r--r-- 1 spark spark   947 Nov 23 01:02 spark-defaults.conf
+-rw-r--r-- 1 hive  hadoop 1002 Nov 23 01:02 spark-thrift-sparkconf.conf
+
+In normal Python if you want to read the file - Open(Path).read().splitlines("\n") - whereas in Pyspark - sc.textFile(path)
+
+
+Spark-env.sh
+
+#!/usr/bin/env bash
+
+# This file is sourced when running various Spark programs.
+# Copy it as spark-env.sh and edit that to configure Spark for your site.
+
+# Options read in YARN client mode
+#SPARK_EXECUTOR_INSTANCES="2" #Number of workers to start (Default: 2)
+#SPARK_EXECUTOR_CORES="1" #Number of cores for the workers (Default: 1).
+#SPARK_EXECUTOR_MEMORY="1G" #Memory per Worker (e.g. 1000M, 2G) (Default: 1G)
+#SPARK_DRIVER_MEMORY="512M" #Memory for Master (e.g. 1000M, 2G) (Default: 512 Mb)
+#SPARK_YARN_APP_NAME="spark" #The name of your application (Default: Spark)
+#SPARK_YARN_QUEUE="default" #The hadoop queue to use for allocation requests (Default: default)
+#SPARK_YARN_DIST_FILES="" #Comma separated list of files to be distributed with the job.
+#SPARK_YARN_DIST_ARCHIVES="" #Comma separated list of archives to be distributed with the job.
+
+
+[vvdorareddy6666@gw02 conf]$ 
+
+[vvdorareddy6666@gw02 conf]$ cat #!/usr/bin/env bash
+#SPARK_YARN_DIST_ARCHIVES="" #Comma separated list of archives to be distributed with the job.)
+
+
+[vvdorareddy6666@gw02 conf]$ cat spark-defaults.conf
+# Generated by Apache Ambari. Fri Nov 23 01:02:06 2018
+    
+spark.driver.extraLibraryPath /usr/hdp/current/hadoop-client/lib/native:/usr/hdp/current/hadoop-client/lib/native/Linux-amd64-64
+spark.dynamicAllocation.enabled true
+spark.dynamicAllocation.executorIdleTimeout 300
+spark.dynamicAllocation.initialExecutors 0
+spark.dynamicAllocation.maxExecutors 4
+spark.dynamicAllocation.minExecutors 0
+spark.eventLog.dir hdfs:///spark2-history/
+spark.eventLog.enabled true
+spark.executor.extraLibraryPath /usr/hdp/current/hadoop-client/lib/native:/usr/hdp/current/hadoop-client/lib/native/Linux-amd64-64
+spark.history.fs.logDirectory hdfs:///spark2-history/
+spark.history.kerberos.keytab none
+spark.history.kerberos.principal none
+spark.history.provider org.apache.spark.deploy.history.FsHistoryProvider
+spark.history.ui.port 18081
+spark.shuffle.service.enabled true
+spark.yarn.historyServer.address gw03.itversity.com:18081
+spark.yarn.queue default
+
+
+Same thing we can control from Ambari
+
+
+>> set -io vi
+
+Executer is nothing but a JVM - Java Virtual Machine and JVM will be control by - SPARK EXECUTOR CORE AND EXECUTOR MEMORY 
+
+if the DynamicAllocationis True only SPARK_EXECUTOR_INSTANCE value will be overwrite during run time..
+
+SparkContext is nothing but a webservice - will procure the resouce from cluster and keep track of it
+
+Each application use a port to track the things like spark.ui.port=12013 
+
+
+sc.setLogLevel ("INFO")
+
+Note : Spark 1.6 Spark Core, from Spark 2 onwards SPARK SQL and Data Frames 
+
+
+
+The code which we have ran will be copied to Cache (Worker Node, Executer, Cache) and it will keep on creating the Task (it will create the as many as Tasks). Tasks are the one which process the data
+Spark is running under Hadoop hud
+
+
+From Gateway nodes lo lanch pyspark and submit the jobs pyspark jobs
+
+nn for hdfc nodes
+rm for resource manager nodes - Master in Yarn mode - it keep track of demon process which is launching on all worker nodes. it has a process called node manager and all node managers will communicate the resource managers (resource manager is master and node manager is slave) . Depends on capacity given by the node manager (Under YARN we can see the details) 
+
+Yarn container - SparkContext (nothing but executors) memory allowacation for all spark executos on node is 24 gb
+Each node (24 GB of Ram and 12 CPU's) - 5 Nodes - 120 GB of Ram and 60 CPU's (we can get as many as executors dependent on our workload
+
+SPARK_EXECUTOR_MEMORY is 1 GB (not less than that and max will be 4 and we can increase as well)  
+
+pyspark --master yarn --conf spark.ui.port=12013 --num-executors 2 --conf spark.dynamicAllocation.enable=false --executor-memory 4096m --executor-core 2
+
+Cache memory size is extra what ever we have given to them - Spark.yarn.executor.memoryOverhead 384  + 3500 MB - Each executor will get around 3.9 gb + 384 = 4gb
+
+
+
+
+-------------------------------------------------------------------------------
+
+Now let us see details about data structures in Spark such as Resilient Distributed Datasets, Data Frames, Directed Acyclic Graph, Lazy Evaluation etc.
+
+    Data Structures – RDD and Data Frames
+    Quick overview about APIs – Transformations and Actions
+    Directed Acyclic Graph and Lazy Evaluation
+
+
+
+Resilient Distributed Datasets
+
+Resilient Distributed Datasets (in short RDD) is the fundamental data structure in Spark.
+
+    In-memory
+    Distributed
+    Resilient - While data is processed, after some extent if the one of the executor is down. What ever the task run by that executor will be faile over to other nodes and RDD will be re-processed. That is wy we called as Resilient. 
+    Data from files will be divided into RDD partitions and each partition is processed by separate task
+    By default it will use HDFS block size (128 MB) to determine  partition
+    We can increase (cannot decrease) number of partitions by using additional parameter in sc.textFile
+    By default when data is loaded into memory each record will be serialized into Java object
+    We can persist the RDD partitions at different storage levels
+        MEMORY_ONLY (default)
+        MEMORY_AND_DISK
+        DISK_ONLY
+        and more
+
+Data Frames
+
+Many times data will have structure. Using RDD and then core APIs is some what tedious and cryptic. We can use Data Frames to address these issues. Here are the some of the advantages using Data Frames
+
+    Flexible APIs (Data Frame native operations as well as SQL)
+    Code will be readable
+    Better organized and manageable
+    Uses latest optimizers
+    Process data in binary format
+    Can generate execution plans based on statistics collected
+
+We will talk about processing data using Data Frames in next chapter. For now we will be focusing on Core APIs
+Overview of Transformations and Actions
+
+Spark Core APIs are categorized into 2
+
+    Transformations
+        Row level transformations – map, flatMap, filter
+        Joins – join, leftOuterJoin, rightOuterJoin
+        Aggregations – reduceByKey, aggregateByKey
+        Sorting data – sortByKey
+        Group operations such as ranking – groupByKey
+        Set operations – union, intersection
+        and more
+    Actions
+        Previewing data – first, take, takeSample
+        Converting RDD into typical collection – collect
+        Total aggregations – count, reduce
+        Total ranking – top
+        Saving files – saveAsTextFile, saveAsNewAPIHadoopFile etc
+        and more
+
+Transformations are the APIs which take RDD as input and return another RDD as output. These APIs does not trigger execution but update the DAG. Actions take RDD as input and return a primitive data type or regular collection to the driver program. Also we can use actions to save the output to the files. Actions trigger execution of DAG.
+Directed Acyclic Graph and Lazy Evaluation
+
+Thare are many APIs in Spark. But most of the APIs do not trigger execution of Spark job.
+
+    When we create Spark Context object it will procure resources in the cluster
+    APIs used to read the data such as textFile as well as to process the data such as map, reduce, filter etc does not trigger immediate execution. They create variables of type RDD which also point to DAG.
+    They run in driver program and build DAG. DAG will tell how it should execute. Each variable have a DAG associated with it.
+    When APIs which are categorized as action (such as take, collect, saveAsTextFile) are used DAG associated with the variable is executed.
+    In Scala, we can look at the DAG details by using toDebugString on top of the variables created.
+    We can visualize DAG as part of Spark UI
+
+
+Python List - it is single theread process and single object will create and store the data in-memory. if you apply filter then, it will create one more memory object in-memory.
+lscpu - will give you the cpu details
+
+with single theared with serial we not using complete 4 cpus
+
+hdfs dfs -du -s -h /public/*
+hdfs fsck /public/randomtextwriter/part-m-00000 -files -blocks -locations  - to get the block details
+hdfs dfs -du -s -h  /public/randomtextwriter/part-m-00000
+
+set -oi vi 
+
+host detaisl - cat /etc/hosts
+
+
+Spark applications run as independent sets of processes on a cluster, coordinated by the SparkContext object in your main program (called the driver program).
+
+Specifically, to run on a cluster, the SparkContext can connect to several types of cluster managers (either Spark’s own standalone cluster manager, Mesos or YARN), which allocate resources across applications. Once connected, Spark acquires executors on nodes in the cluster, which are processes that run computations and store data for your application. Next, it sends your application code (defined by JAR or Python files passed to SparkContext) to the executors. Finally, SparkContext sends tasks to the executors to run.
+
+ 
+ 
+Every thing will be executed in driver programe. Until we do it an action.
+
+After the action : Example 1GB file with 9 blocks and 5 executors (5 nodes and one is down node 1 - 2 exectors, node 2- 1 executer, node 3- 1 executer, node 4- 1 executer, node 5- No executors)
+Step 1 : Complied code will copy to cache
+Step 2 : Based on the blocks, same no.of tasks will execute 	
+
+if the executors are 5, Out of 5 nodes, one of the node is down (However in node 1 can have 2 executor) within executer the default only one task will run at any give point of time and it will pick up other task only if the first is completed. 
+
+One of the block is in othere node.
+
+As long as the data and executors are in same node then it will lavarage the data locality. it will give priority to process the local data. then if any leftover it will copy the data from donwned node data to existing one and process(i/o process will be high)i
+
+RDD data will be reading in streaming fashion not the entire data. RDD is nothing but serialized java object for input data and final output will be deserilaze into file.
+
+Cache/Presist
+
+from pyspark import StrorageLevel, port range - 10000 -65535 (Sparkcontext will run in web applications)
+Ex: lines.presist(StrogeeLevel.MEMORY_ONLY) inside there will a compression process will be involved. When compare to actual size vs cache size the volume is very less..
+
+Transformation will managed by Executors whereas Actions are sent to driver (gateway node not on the cluster). Transformation will now executed until the action but it will create the DAG. Actions will execute the DAG
+
+toDebugString is available only in scala not in python...
+
+
+
+
+    Overview of data processing life cycle – row level transformations -> shuffling -> joins/aggregations
+    Row level transformations – map, flatMap
+    Filtering – filter
+    Aggregations – reduceByKey and aggregateByKey
+    Joins – performing inner joins and outer joins
+    Sorting data
+
+
+To Sum up we can use GroupByKey, ReduceByKey or AggrigateByKey - IMP - ReduceByKey & AggrigateByKey Uses interally combiner whereas GroubyKey will not and it is expensive 
+
+GroupByKey -> [(2, [134, 456])] - GroupByKey doesnt take the lambda functions - > Orderitmes.GroupByKey()
+
+(2,134)
+(2,456)
+
+example (2, resultiterable)
+
+GroupbykeyRDD = GroupByKey.map (lambda x: (x[0],sum(x[1])))
+
+Shuffling
+
+Let us understand the concept of Shuffling.
+
+    As we have seen a Spark job will run in multiple stages
+    Stages will run in linear fashion. For example Stage 1 will run only after Stage 0 is completely done
+    In each stage data will be processed using tasks
+    Output of stage 0 tasks will be passed as input to stage 1 tasks
+    When the output of tasks in earlier stages is passed as input to tasks in later stages, following happen
+            Data will be partitioned by using hash mod algorithm
+            Data related to keys will be grouped together
+            This data will be cached in memory and it might be spilled to disk as well.
+            Data related to a particular key from all tasks of earlier stages will be passed to one task in later stages.
+            This entire process is called shuffling
+            When certain APIs such as reduceByKey/aggregateByKey is used, it will also perform some thing called combining which can improve the performance significantly.
+            APIs such as join, reduceByKey, aggregateByKey, groupByKey etc result in shuffling.
+    Number of tasks in subsequent stages are determined by one of these
+        Number of partitions from earlier stage
+        numTasks or numPartitions argument as part of APIs that result in shuffling
+        repartition or coalesce (covered as part of next topic)
+    Accurate number of tasks can only be determined after understanding data behavior in detail. Here is some of the criteria
+        Ratio between input data vs. output (in case of filtering and aggregations output size will be considerably lower)
+        Keys on which data is shuffled (sparse keys vs. dense keys)
+        Joins and potential cartesian products
+        and more
+
+Here are the examples of groupByKey, reduceByKey and aggregateByKey to understand the differences.
+
+Spark 2 works with Python 3.6
+
+
+As we understand basic transformations such as map, flatMap, reduce etc, now let us look at few advanced operations.
+
+    mapPartitions
+    ranking using groupByKey
+
+
+mapPartitions
+
+APIs such as map, filter, flatMap work on individual records. We can implement any of this functionality using mapPartitions, but the difference is in its execution.
+
+    For map, filter, flatMap – number of executions of lambda function is equal to number of records
+    For mapPartitions – number of executions of lambda function is equal to number of partitions
+    As part of the lambda function in mapPartitions
+        Process data as collection
+        Apply Python map or filter or flatten
+        Return a collection
+    The elements from the collection returned from lambda function will be added to RDD
+    Use cases where mapPartitions can perform better – Looking up into a database. Instead of creating connection for each record, we can establish connection once per for each partition (if looking up into database is required as part of data processing)
+    Here is the example of getting word count using mapPartitions
+
+lines = sc.textFile("/public/randomtextwriter/part-m-00000")
+def getWordTuples(i):
+  import itertools as it
+  wordTuples = map(lambda s: (s, 1), it.chain.from_iterable(map(lambda s: s.split(" "), i)))
+  return wordTuples
+
+wordTuples = lines.mapPartitions(lambda i: getWordTuples(i))
+for i in wordTuples.reduceByKey(lambda x, y: x + y).take(10):
+  print(i)
+view raw
+pyspark-wordcount-mapPartitions.py hosted with ❤ by GitHub
+
+ranking using groupByKey
+
+groupByKey is very powerful API which groups the values based on the key. It can be used to solve problems such as ranking.
+
+    Task 1: Get top N products by price in each category
+        Let us read products data into RDD
+        Convert the data to (k, v) using product category id as key and the entire product record as value
+        Use groupByKey
+        Use first and get first record and read the second element to regular python collection variable (productsPerCategory)
+        Develop function to get top N products by price in that list
+        Validate the function using productsPerCategory
+        Invoke the function on output of groupByKey as part of flatMap
+
+products = sc.textFile("/public/retail_db/products")
+productsFiltered = products.filter(lambda p: p.split(",")[4] != "")
+productsMap = productsFiltered.map(lambda p: (int(p.split(",")[1]), p))
+productsGBCategory = productsMap.groupByKey()
+
+# p = list(productsGBCategory.first()[1])
+
+def getTopNProducts(products, topN):
+  return sorted(products, key=lambda k: float(k.split(",")[4]), reverse=True)[:topN]
+    
+# getTopNProducts(p, 3)
+
+topNProductsByCategory = productsGBCategory.flatMap(lambda p: getTopNProducts(list(p[1]), 3))
+for i in topNProductsByCategory.take(10):
+  print(i)
+view raw
+groupByKey-getTopNProductsPerCategory.py hosted with ❤ by GitHub
+
+    Task 2: Get top N Priced products in each category
+        Let us read products data into RDD
+        Convert the data to (k, v) using product category id as key and the entire product record as value
+        Use groupByKey
+        Use first and get first record and read the second element to regular python collection variable (productsPerCategory)
+        Develop function to get top N priced products in that list (simulating dense rank)
+        Validate the function using productsPerCategory
+        Invoke the function on output of groupByKey as part of flatMap
+
+products = sc.textFile("/public/retail_db/products")
+productsFiltered = products.filter(lambda p: p.split(",")[4] != "")
+productsMap = productsFiltered.map(lambda p: (int(p.split(",")[1]), p))
+productsGBCategory = productsMap.groupByKey()
+
+# p = list(productsGBCategory.first()[1])
+
+def getTopNPricedProducts(products, topN):
+  import itertools as it
+  productPrices = sorted(set(map(lambda p: float(p.split(",")[4]), products)), reverse=True)[:topN]
+  productsSorted = sorted(products, key=lambda k: float(k.split(",")[4]), reverse=True)
+  return it.takewhile(lambda product: float(product.split(",")[4]) in productPrices, productsSorted)
+    
+# getTopNProducts(p, 3)
+
+topNPricedProductsByCategory = productsGBCategory.flatMap(lambda p: getTopNPricedProducts(list(p[1]), 3))
+for i in topNPricedProductsByCategory.take(10):
+print(i)
+
+
+
+

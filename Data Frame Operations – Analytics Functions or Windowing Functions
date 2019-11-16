@@ -1,0 +1,234 @@
+As part of this session we will see advanced operations such as aggregations, ranking and windowing functions with in each group using APIs such as over, partitionBy etc. We will also build a solution for problem and run it on multinode cluster.
+
+    Aggregations, Ranking and Windowing Functions – APIs
+    Problem Statement – Get top n products per day
+    Creating Window Spec
+    Performing aggregations
+    Using windowing functions
+    Ranking with in each partition or group
+    Development Life Cycle
+
+
+
+Aggregations, Ranking and Windowing Functions – APIs
+
+Let us understand APIs related to aggregations, ranking and windowing functions.
+
+    Main package pyspark.sql.window
+    It has classes such as Window and WindowSpec
+    Window have APIs such as partitionBy, orderBy etc
+    It return WindowSpec object. We can pass WindowSpec object to over on functions such as rank(), dense_rank(), sum() etc
+    e.g.: rank().over(spec) where spec = Window.partitionBy(‘ColumnName’)
+    Aggregations – sum, avg, min, max etc
+    Ranking – rank, dense_rank, row_number etc
+    Windowing – lead, lag etc
+
+
+
+
+orderItemsCSV = spark.read. \
+  csv('/public/retail_db/order_items'). \
+  toDF('order_item_id', 'order_item_order_id', 'order_item_product_id', 
+       'order_item_quantity', 'order_item_subtotal', 'order_item_product_price')
+
+from pyspark.sql.types import IntegerType, FloatType
+
+orderItems = orderItemsCSV.\
+    withColumn('order_item_id', orderItemsCSV.order_item_id.cast(IntegerType())). \
+    withColumn('order_item_order_id', orderItemsCSV.order_item_order_id.cast(IntegerType())). \
+    withColumn('order_item_product_id', orderItemsCSV.order_item_product_id.cast(IntegerType())). \
+    withColumn('order_item_quantity', orderItemsCSV.order_item_quantity.cast(IntegerType())). \
+    withColumn('order_item_subtotal', orderItemsCSV.order_item_subtotal.cast(FloatType())). \
+withColumn('order_item_product_price', orderItemsCSV.order_item_product_price.cast(FloatType()))
+
+------------------------------------------------------------------------------------------------------
+
+from pyspark.sql.window import Window
+spec = Window.partitionBy('order_item_order_id')
+
+from pyspark.sql.functions import sum, round
+orderItems. \
+  withColumn('order_revenue', round(sum('order_item_subtotal').over(spec), 2)). \
+show()
+
+------------------------------------------------------------------------
+
+from pyspark.sql.window import Window
+spec = Window. \
+  partitionBy('order_item_order_id'). \
+  orderBy(orderItems.order_item_subtotal.desc())
+
+from pyspark.sql.functions import rank
+orderItems. \
+  withColumn('rnk', rank().over(spec)). \
+  orderBy(orderItems.order_item_order_id, orderItems.order_item_subtotal.desc()). \
+show()
+
+-------------------------------------------------------------------------------
+
+from pyspark.sql.window import Window
+spec = Window. \
+  partitionBy('order_item_order_id'). \
+  orderBy(orderItems.order_item_subtotal.desc())
+
+spark.conf.set('spark.sql.shuffle.partitions', '2')
+from pyspark.sql.functions import lead
+orderItems. \
+  withColumn('next_order_item_subtotal', lead('order_item_subtotal').over(spec)). \
+  orderBy(orderItems.order_item_order_id, orderItems.order_item_subtotal.desc()). \
+show()
+
+-----------------------------------------------------------------------------------
+
+
+Problem Statement – Get top n products per day
+
+Let us define the problem statement and see the real usage of analytics function.
+
+    Problem Statement – Get top N Products Per day
+    Get daily product revenue code from previous topic
+    Use ranking functions and get the rank associated based on revenue for each day
+    Once we get rank, let us filter for top n products.
+
+Creating Window Spec
+
+Let us see how to create Window Spec.
+
+    Window have APIs such as partitionBy, orderBy
+    For aggregations we can define group by using partitionBy
+    For ranking or windowing we need to use partitionBy and then orderBy. partitionBy is to group the data and orderBy is to sort the data to assign rank.
+    partitionBy or orderBy returns WindowSpec object
+    WindowSpec object need to be passed to over with ranking and aggregate functions.
+
+Performing aggregations
+
+Let us see how to perform aggregations with in each group.
+
+    We have functions such as sum, avg, min, max etc which can be used to aggregate the data.
+    We need to create WindowSpec object using partitionBy to get aggregations with in each group.
+    Some realistic use cases
+        Get average salary for each department and get all employee details who earn more than average salary
+        Get average revenue for each day and get all the orders who earn revenue more than average revenue
+        Get highest order revenue and get all the orders which have revenue more than 75% of the revenue
+
+Using windowing functions
+
+Let us see details about windowing functions with in each group
+
+    We have functions such as lead, lag etc
+    We need to create WindowSpec object using partitionBy and then orderBy for most of the windowing functions
+    Some realistic use cases
+        Salary difference between current and next/previous employee with in each department
+
+Ranking with in each partition or group
+
+Let us talk about ranking functions with in each group.
+
+    We have functions like rank, dense_rank, row_number, first, last etc
+    We need to create WindowSpec object using partitionBy and then orderBy for most of the ranking functions
+    Some realistic use cases
+        Assign rank to employees based on salary with in each department
+        Assign ranks to products based on revenue each day or month
+
+Development Life Cycle
+
+Let us talk about development life cycle.
+
+    Take the DailyProductRevenue code which gives us order_date, order_item_product_id and revenue
+    Import Window and create spec to partition by date and order by revenue in descending order.
+    Use withColumn and assign rank
+    Filter data where rank is less than or equal to topN passed as argument to the program
+    Drop rank field as we do not want to save the data and then sort in ascending order by date and descending order by revenue
+    Save the data frame into file
+
+
+
+[dev]
+executionMode = local
+input.base.dir = /Users/itversity/Research/data/retail_db
+output.base.dir = /Users/itversity/Research/data/bootcamp/pyspark
+
+[prod]
+executionMode = yarn-client
+input.base.dir = /public/retail_db
+output.base.dir = /user/training/bootcamp/pyspark
+
+-----------------------------------------------------------------------
+
+import configparser as cp, sys
+from pyspark.sql import SparkSession
+
+props = cp.RawConfigParser()
+props.read('src/main/resources/application.properties')
+env = sys.argv[1]
+topN = int(sys.argv[2])
+
+spark = SparkSession.\
+    builder.\
+    appName("Daily Product Revenue using Data Frame Operations").\
+    master(props.get(env, 'executionMode')).\
+    getOrCreate()
+
+spark.conf.set('spark.sql.shuffle.partitions', '2')
+
+inputBaseDir = props.get(env, 'input.base.dir')
+ordersCSV = spark.read. \
+  csv(inputBaseDir + '/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+orderItemsCSV = spark.read. \
+  csv(inputBaseDir + '/order_items'). \
+  toDF('order_item_id', 'order_item_order_id', 'order_item_product_id',
+       'order_item_quantity', 'order_item_subtotal', 'order_item_product_price')
+
+from pyspark.sql.types import IntegerType, FloatType
+
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+
+orderItems = orderItemsCSV.\
+    withColumn('order_item_id', orderItemsCSV.order_item_id.cast(IntegerType())). \
+    withColumn('order_item_order_id', orderItemsCSV.order_item_order_id.cast(IntegerType())). \
+    withColumn('order_item_product_id', orderItemsCSV.order_item_product_id.cast(IntegerType())). \
+    withColumn('order_item_quantity', orderItemsCSV.order_item_quantity.cast(IntegerType())). \
+    withColumn('order_item_subtotal', orderItemsCSV.order_item_subtotal.cast(FloatType())). \
+    withColumn('order_item_product_price', orderItemsCSV.order_item_product_price.cast(FloatType()))
+
+from pyspark.sql.functions import sum, round
+dailyProductRevenue = orders. \
+    where('order_status in ("COMPLETE", "CLOSED")'). \
+    join(orderItems, orders.order_id == orderItems.order_item_order_id). \
+    groupBy('order_date', 'order_item_product_id'). \
+    agg(round(sum(orderItems.order_item_subtotal), 2).alias('revenue'))
+
+
+from pyspark.sql.window import Window
+spec = Window. \
+    partitionBy('order_date'). \
+    orderBy(dailyProductRevenue.revenue.desc())
+
+from pyspark.sql.functions import dense_rank
+dailyProductRevenueRanked = dailyProductRevenue. \
+    withColumn('rnk', dense_rank().over(spec))
+
+topNDailyProducts = dailyProductRevenueRanked. \
+    where(dailyProductRevenueRanked.rnk <= topN). \
+    drop('rnk'). \
+    orderBy(dailyProductRevenue.order_date, dailyProductRevenue.revenue.desc())
+
+outputBaseDir = props.get(env, 'output.base.dir')
+topNDailyProducts.write.csv(outputBaseDir + '/topn_daily_products')
+
+------------------------------------------------------------------------------------
+
+
+spark-submit --master yarn \
+  --deploy-mode client \
+  --conf spark.ui.port=12901 \
+  src/main/python/retail_db/df/TopNDailyProducts.py \
+prod 5
+
+
+

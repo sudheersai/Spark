@@ -1,0 +1,407 @@
+As part of this session we will talk about dealing with different file formats and also custom delimiters in text data. We will see how to read and how to write the data. Also we will understand APIs such as persist/cache on Data Frames.
+
+    Overview of write APIs – dataframe.write
+    Overview of read APIs – spark.read
+    Supported file formats
+        csv, text (for text file formats)
+        json (using complex schema)
+        orc
+        parquet
+        avrò (3rd party)
+    Processing text data with custom delimiters
+    Persisting or Caching Data Frames
+
+
+Overview of write APIs – dataframe.write
+
+Let us see how we can write data to different targets using APIs under write on top of data frame.
+
+    Supported file formats – csv, text json, orc, parquet etc.
+    We can also write data to 3rd party supported file formats such as avro
+    Data can be written to Hive tables as well
+    We can also connect to relational databases over JDBC and save our output into remote relational databases.
+    We can also connect to any 3rd party database using relevant plugin and preserve data over there.
+
+
+
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.write. \
+  format('json'). \
+  save('/user/training/bootcampdemo/pyspark/orders_json')
+
+orders.write.json('/user/training/bootcampdemo/pyspark/orders_json')
+
+---------------------------------------------------------------------
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+table = 'retail_export.orders_export'
+
+orders.write. \
+  format('jdbc'). \
+  option('url', 'jdbc:mysql://ms.itversity.com'). \
+  option('dbtable', 'retail_export.orders_export'). \
+  option('user', 'retail_user'). \
+  option('password', 'itversity'). \
+  save(mode='append')
+
+orders.write. \
+    jdbc("jdbc:mysql://ms.itversity.com", table, mode='append',
+         properties={"user": "retail_user",
+"password": "itversity"})
+
+------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+# To create new table and insert into it
+orders.write. \
+  format('hive'). \
+  saveAsTable('bootcampdemo.orders_hive', mode='overwrite')
+
+orders.write.saveAsTable('bootcampdemo.orders_hive', mode='overwrite')
+
+# To insert data into existing table
+orders.write. \
+  format('hive'). \
+  insertInto('bootcampdemo.orders_hive', overwrite=True)
+
+orders.write.insertInto('bootcampdemo.orders_hive', overwrite=True)
+
+
+----------------------------------------------------------------------
+
+
+Overview of read APIs – spark.read
+
+spark.read have bunch of APIs to read data from different source types.
+
+    Supported file formats- csv, text, json, orc, parquet etc
+    We can also read data from 3rd party supported file formats such as avro
+    We can read data directly from hive tables
+    JDBC – to read data from relational databases
+    There is generic API called format which can be used in conjunction with option to pass relevant arguments and then load data from either files or over JDBC.
+
+
+---------------------------------------------------------------------
+
+orders = spark.read. \
+  format('json'). \
+  load('/user/training/bootcampdemo/pyspark/orders_json')
+
+orders = spark.read.json('/user/training/bootcampdemo/pyspark/orders_json')
+
+orders.show()
+orders.printSchema()
+
+-------------------------------------------------------------------
+
+table = 'retail_export.orders_export'
+
+orders = spark.read. \
+  format('jdbc'). \
+  option('url', 'jdbc:mysql://ms.itversity.com'). \
+  option('dbtable', 'retail_export.orders_export'). \
+  option('user', 'retail_user'). \
+  option('password', 'itversity'). \
+  load()
+
+orders = spark.read. \
+    jdbc("jdbc:mysql://ms.itversity.com", table,
+         properties={"user": "retail_user",
+                     "password": "itversity"})
+
+orders.show()
+orders.printSchema()
+
+---------------------------------------------------------------------
+
+orders = spark.read. \
+  format('hive'). \
+  table('bootcampdemo.orders_hive')
+
+orders = spark.read.table('bootcampdemo.orders_hive')
+
+orders.show()
+orders.printSchema()
+
+-------------------------------------------------------------------
+
+Supported file formats
+
+Let us see details about all the supported formats in Spark to create data frames and save them.
+
+    Following file formats are supported out of the box with Spark
+        text – using text (fixed length) or csv (delimited)
+        json
+        orc
+        parquet
+    Avro is available with 3rd party plugins
+
+
+------------------------------------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.selectExpr("concat(order_id, ',', order_date, ',', order_customer_id, ',', order_status)"). \
+  write. \
+  format('text'). \
+  save('/user/training/bootcampdemo/pyspark/orders_text')
+
+orders.selectExpr("concat(order_id, ',', order_date, ',', order_customer_id, ',', order_status)"). \
+  write. \
+  text('/user/training/bootcampdemo/pyspark/orders_text')
+
+orders_read = spark.read.format('text'). \
+  load('/user/training/bootcampdemo/pyspark/orders_text')
+
+orders_read = spark.read.text('/user/training/bootcampdemo/pyspark/orders_text')
+
+orders_read.show()
+orders_read.printSchema()
+
+------------------------------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.write. \
+  format('csv'). \
+  save('/user/training/bootcampdemo/pyspark/orders_csv')
+
+orders.write.csv('/user/training/bootcampdemo/pyspark/orders_csv')
+
+orders_read = spark.read. \
+  format('csv'). \
+  load('/user/training/bootcampdemo/pyspark/orders_csv'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+orders_read = spark.read. \
+  csv('/user/training/bootcampdemo/pyspark/orders_csv'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+orders_read.show()
+orders_read.printSchema()
+
+----------------------------------------------------------------------------------------------
+
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.write. \
+  format('json'). \
+  save('/user/training/bootcampdemo/pyspark/orders_json')
+
+orders.write.json('/user/training/bootcampdemo/pyspark/orders_json')
+
+orders_read = spark.read. \
+  format('json'). \
+  load('/user/training/bootcampdemo/pyspark/orders_json')
+
+orders_read = spark.read. \
+  json('/user/training/bootcampdemo/pyspark/orders_json')
+
+orders_read.show()
+orders_read.printSchema()
+
+----------------------------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.write. \
+  format('orc'). \
+  save('/user/training/bootcampdemo/pyspark/orders_orc')
+
+orders.write.orc('/user/training/bootcampdemo/pyspark/orders_orc')
+
+orders_read = spark.read. \
+  format('orc'). \
+  load('/user/training/bootcampdemo/pyspark/orders_orc')
+
+orders_read = spark.read. \
+  orc('/user/training/bootcampdemo/pyspark/orders_orc')
+
+orders_read.show()
+orders_read.printSchema()
+
+-----------------------------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.write. \
+  format('parquet'). \
+  save('/user/training/bootcampdemo/pyspark/orders_parquet')
+
+orders.write.parquet('/user/training/bootcampdemo/pyspark/orders_parquet')
+
+orders_read = spark.read. \
+  format('parquet'). \
+  load('/user/training/bootcampdemo/pyspark/orders_parquet')
+
+orders_read = spark.read. \
+  parquet('/user/training/bootcampdemo/pyspark/orders_parquet')
+
+orders_read.show()
+orders_read.printSchema()
+
+---------------------------------------------------------------------------------------------------
+
+
+# Launch pyspark with avro dependencies
+# pyspark --master yarn --conf spark.ui.port=12901 --packages com.databricks:spark-avro_2.11:4.0.0
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.write. \
+  format('com.databricks.spark.avro'). \
+  save('/user/training/bootcampdemo/pyspark/orders_avro')
+
+orders_read = spark.read. \
+  format('com.databricks.spark.avro'). \
+  load('/user/training/bootcampdemo/pyspark/orders_avro')
+
+orders_read.show()
+orders_read.printSchema()
+------------------------------------------------------------------------------------------------------------------
+
+Processing text data with custom delimiters
+
+Now let us understand how to process text data with different line as well as field delimiters.
+
+    We can read text data into RDD using SparkContext’s textFile. It will treat new line character as record delimiter.
+    We have to parse each record in RDD and derive data to process further
+    With Spark Data Frames we have csv and text APIs to read text data int Data Frame
+    Both of them use new line character as record delimiter. When we use csv API to create data frame we can also specify field separator/delimiter using sep keyword argument
+    We can also specify sep while writing data into text files with any field separator or delimiter using csv API. Also we can concatenate data as part of selectExpr with delimiter of our choice and use text API.
+    Here is the example to read and write data with ascii null character.
+
+
+-----------------------------------------------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.selectExpr("concat(order_id, '\00', order_date, '\00', order_customer_id, '\00', order_status)"). \
+  write. \
+  text('/user/training/bootcampdemo/pyspark/orders_null')
+
+orders.write.csv('/user/training/bootcampdemo/pyspark/orders_null', '\00')
+
+orders_read_csv = spark.read.csv('/user/training/bootcampdemo/pyspark/orders_null', sep='\00'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+orders_read = orders_read_csv. \
+  withColumn('order_id', orders_read_csv.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', orders_read_csv.order_customer_id.cast(IntegerType()))
+
+orders_read.show()
+orders_read.printSchema()
+
+------------------------------------------------------------------------------------------------------------------
+
+
+    At times, we might have to deal with text data where line delimiter is different than new line character.
+    In this case we need to use HDFS APIs to read data from files with custom line delimiter into RDD and process further (either using transformations/actions or data frame operations)
+
+-------------------------------------------------------------------------------------------------------------------
+
+path = "/public/yelp-dataset/yelp_review.csv"
+
+yelpReview = sc.newAPIHadoopFile(path, 
+  'org.apache.hadoop.mapreduce.lib.input.TextInputFormat', 
+  'org.apache.hadoop.io.LongWritable', 
+  'org.apache.hadoop.io.Text', 
+  conf={'textinputformat.record.delimiter' : '\r'})
+  
+yelpReview.count()
+
+for i in yelpReview.map(lambda r: str(r[1])).take(10): print(i)
+
+for i in yelpReview. \
+  map(lambda r: (len(str(r[1]).split('","')), 1)). \
+  reduceByKey(lambda x, y: x + y). \
+  collect():
+print(i)
+
+----------------------------------------------------------------------------------------------------
+
+Persisting or Caching Data Frames
+
+Now let us see how we can persist data frames.
+
+    By default data will be streamed as data frames to executor tasks as data being processed.
+    Here is what will happen when data is read into executor task while it is being processed
+        Deserialize into object
+        Stream into memory
+        Process data by executor task by applying logic
+        Flush deserialized objects from memory as executor tasks are terminated
+    Some times we might have to read same data multiple times for processing with in the same job. By default every time data need to be deserialized and submitted to executor tasks for processing
+    To avoid deserializing into java objects when same data have to be read multiple times we can leverage caching.
+    There are 2 methods persist and cache. By default with data frames caching will be done as MEMORY_AND_DISK from Spark 2.
+    cache is shorthand method for persist at MEMORY_AND_DISK
+    This is what happens when we cache Data Frame
+        Caching will be done only when data is read at least once for processing
+        Each record will be deserialized into object
+        These deserialized objects will be cached in memory as long as they fit
+        If not, deserialized objects will be spilled out to disk
+    You can get details about different persistence levels from here
+

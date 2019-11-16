@@ -1,0 +1,142 @@
+As part of this topic we will understand compression algorithms and how we can actually compress data while saving output in particular file format.
+
+    Compression Algorithms
+    Reading Compressed Data
+    Compressing while saving output
+    Criteria for choosing compression algorithm
+
+Compression Algorithms
+
+Let us understand details with respect to compression algorithms.
+
+    Standard Algorithms – gzip, snappy, lzo, bzip2 etc
+    Some of the compression algorithms are splittable while others are not.
+    Most of the algorithms have both native implementation as well as java implementations (except bzip2 – which have only Java implementation)
+    Native implementations are relatively faster than Java implementations
+    Splittable vs. Non Splittable
+    We can not only compress final output, but also intermediate data in Spark.
+
+
+Compression – Reading and Writing
+
+    Compressing text files
+        Reading – No special action need to be taken as long as we use supported algorithms.
+        Writing
+            Can compress to most of the algorithms (bzip2, deflate, uncompressed, lz4, gzip, snappy, none)
+            Use option on spark.write before csv – df.write.option("codec", "gzip").csv("<PATH>")
+            Also option with compression work fine
+    Compressing json files
+        Reading – No special action need to be taken as long as we use supported algorithms.
+        Writing
+            Can compress to most of the algorithms (bzip2, deflate, uncompressed, lz4, gzip, snappy, none)
+            Use option with compression – option("compression", "gzip")
+    Compressing orc files
+        Reading – No special action need to be taken as long as we use supported algorithms.
+        Writing
+            Default – snappy
+            Could not figure out how I can write in other file formats
+    Compressing parquet files
+        Reading – No special action need to be taken as long as we use supported algorithms.
+        Writing
+            Default – snappy
+            Supported codecs – uncompressed, snappy, gzip, lzo
+            Set spark.sql.parquet.compression.codec to the appropriate algorithm
+    Compressing avrò files
+        Reading – No special action need to be taken as long as we use supported algorithms.
+        Writing
+            Default – uncompress
+            Supported codecs – uncompressed, snappy, deflate
+            Set spark.sql.avro.compression.codec to the appropriate algorithm
+
+
+-------------------------------------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.write.option("codec", "gzip"). \
+  csv("/user/training/bootcampdemo/pyspark/orders_csv_compressed")
+
+orders.write. \
+  format('csv'). \
+  option("codec", "gzip"). \
+  save("/user/training/bootcampdemo/pyspark/orders_csv_compressed", mode='overwrite')
+
+orders.selectExpr("concat(order_id, ',', order_date, ',', order_customer_id, ',', order_status)"). \
+  write.option("codec", "gzip"). \
+text("/user/training/bootcampdemo/pyspark/orders_text_compressed")
+
+--------------------------------------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+  
+orders.write.option("codec", "gzip"). \
+  json("/user/training/bootcampdemo/pyspark/orders_json_compressed")
+
+orders.write. \
+  format('json'). \
+  option("codec", "gzip"). \
+save("/user/training/bootcampdemo/pyspark/orders_json_compressed", mode='overwrite')
+
+--------------------------------------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+  
+spark.conf.set('spark.sql.parquet.compression.codec', 'gzip')
+
+orders.write. \
+  format('parquet'). \
+  save('/user/training/bootcampdemo/pyspark/orders_parquet_compressed')
+
+orders.write.parquet('/user/training/bootcampdemo/pyspark/orders_parquet', mode='overwrite')
+
+--------------------------------------------------------------------------------------------------------
+
+ordersCSV = spark.read.csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+from pyspark.sql.types import IntegerType, FloatType
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+  
+spark.conf.set('spark.sql.avro.compression.codec', 'snappy')
+
+orders.write. \
+  format('com.databricks.spark.avro'). \
+save('/user/training/bootcampdemo/pyspark/orders_avro_compressed')
+
+----------------------------------------------------------------------------------------------------
+
+Criteria and Tips
+
+Here is the criteria and tips for choosing the compression algorithms.
+
+    Choose the ones with native implementation
+    Most of those compression algorithms which have native implementations are not splittable (which means irrespective of the size of the file, each file is processed by one task at a time).
+    To work around the limitation of one task per file in case of non splittable algorithms we need to make sure data is saved in multiple files of manageable size.
+    Some of the file formats such as parquet, orc etc are compressed by default. It is better to use the default compression (for example parquet is compressed using snappy).
+
+
+----------------------------------------------------------------------------------------------------
+
+
+
+

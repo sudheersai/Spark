@@ -1,0 +1,692 @@
+Creating Data Frames and Pre-Defined functions
+
+As part of this session we will understand what is Data Frames, how data frames can be created from (text) files, hive tables, relational databases using JDBC etc. We will also understand how data frame can be registered as in memory table/view and run SQL on top of it as well as some of the important functions that can be used to manipulate data as part of data frame operations.
+
+    Data Frames – Overview
+    Reading text data from files
+    Reading data from hive
+    Reading data from MySQL over JDBC
+    Data Frame Operations – Overview
+    Spark SQL – Overview
+    Functions to manipulate data
+
+
+Data Frames – Overview
+
+Data Frames is nothing but RDD with structure.
+
+    Data Frame can be created on any data set which have structure associated with it.
+    Attributes/columns in a data frame can be referred using names.
+    One can create data frame using data from files, hive tables, relational tables over JDBC.
+    Common functions on Data Frames
+        printSchema – to print the column names and data types of data frame
+        show – to preview data (default 20 records)
+        describe – to understand characteristics of data
+        count – to get number of records
+        collect – to convert data frame into Array
+    Once data frame is created, we can process data using 2 approaches.
+        Native Data Frame APIs
+        Register as temp table and run queries using spark.sql
+    To work with Data Frames as well as Spark SQL, we need to create object of type SparkSession
+
+
+from pyspark.sql import SparkSession
+
+spark = SparkSession. \
+    builder. \
+    master('local'). \
+    appName('Create Dataframe over JDBC'). \
+    getOrCreate()
+
+
+    Once the SparkSession object is created we can use APIs under spark.read to create data frame or use spark.sql to run queries on hive tables or temp tables.
+
+Reading text data from files
+
+Let us see how we can read text data from files into data frame. spark.read also have APIs for other types of file formats, but we will get into those details later.
+
+
+    We can use spark.read.csv or spark.read.text to read text data.
+    spark.read.csv can be used for comma separated data. Default field names will be in the form of _c0, _c1 etc
+    spark.read.text can be used to read fixed length data where there is no delimiter. Default field name is value.
+    We can define attribute names using toDF function
+    In either of the case data will be represented as strings
+    We can covert data types by using cast function – df.select(df.field.cast(IntegerType()))
+    We will see all other functions soon, but let us perform the task of reading the data into data frame and represent it in their original format.
+
+
+spark = SparkSession. \
+  builder. \
+  master('local'). \
+  appName('CSV Example'). \
+  getOrCreate()
+
+orders = spark.read. \
+  format('csv'). \
+  schema('order_id int, order_date string, order_customer_id int, order_status string'). \
+  load('/Users/itversity/Research/data/retail_db/orders')
+
+orders.printSchema()
+orders.show()
+
+orderItems = spark.read. \
+  format('csv'). \
+  schema('''order_item_id int, 
+            order_item_order_id int, 
+            order_item_product_id int, 
+            order_item_quantity int,
+            order_item_subtotal float,
+            order_item_product_price float
+         '''). \
+  load('/Users/itversity/Research/data/retail_db/order_items')
+
+orderItems.printSchema()
+orderItems.show()
+------------------------------------------------------------------------------------------------
+# In case you are using pycharm, first you need to create object of type SparkSession
+spark = SparkSession. \
+  builder. \
+  master('local'). \
+  appName('CSV Example'). \
+  getOrCreate()
+
+ordersCSV = spark.read. \
+  csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+orderItemsCSV = spark.read. \
+  csv('/public/retail_db/order_items'). \
+  toDF('order_item_id', 'order_item_order_id', 'order_item_product_id', 
+       'order_item_quantity', 'order_item_subtotal', 'order_item_product_price')
+
+from pyspark.sql.types import IntegerType, FloatType
+
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.printSchema()
+orders.show()
+
+orderItems = orderItemsCSV.\
+    withColumn('order_item_id', orderItemsCSV.order_item_id.cast(IntegerType())). \
+    withColumn('order_item_order_id', orderItemsCSV.order_item_order_id.cast(IntegerType())). \
+    withColumn('order_item_product_id', orderItemsCSV.order_item_product_id.cast(IntegerType())). \
+    withColumn('order_item_quantity', orderItemsCSV.order_item_quantity.cast(IntegerType())). \
+    withColumn('order_item_subtotal', orderItemsCSV.order_item_subtotal.cast(FloatType())). \
+    withColumn('order_item_product_price', orderItemsCSV.order_item_product_price.cast(FloatType()))
+
+orderItems.printSchema()
+orderItems.show()
+---------------------------------------------------------------------------------------------
+
+Reading data from hive
+
+If Hive and Spark are integrated, we can create data frames from data in Hive tables or run Spark SQL queries against it.
+
+
+    We can use spark.read.table to read data from Hive tables into Data Frame
+    We can prefix database name to table name while reading Hive tables into Data Frame
+    We can also run Hive queries directly using spark.sql
+    Both spark.read.table and spark.sql returns Data Frame
+
+Reading data from MySQL over JDBC
+
+Spark also facilitate us to read data from relational databases over JDBC.
+
+    We need to make sure jdbc jar file is registered using --packages or --jars and --driver-class-path while launching pyspark
+    In Pycharm, we need to copy relevant jdbc jar file to SPARK_HOME/jars
+    We can either use spark.read.format(‘jdbc’) with options or spark.read.jdbc with jdbc url, table name and other properties as dict to read data from remote relational databases.
+    We can pass a table name or query to read data using JDBC into Data Frame
+    While reading data, we can define number of partitions (using numPartitions), criteria to divide data into partitions (partitionColumn, lowerBound, upperBound)
+    Partitioning can be done only on numeric fields
+    If lowerBound and upperBound is specified, it will generate strides depending up on number of partitions and then process entire data. Here is the example
+        We are trying to read order_items data with 4 as numPartitions
+        partitionColumn – order_item_order_id
+        lowerBound – 10000
+        upperBound – 20000
+        order_item_order_id is in the range of 1 and 68883
+        But as we define lowerBound as 10000 and upperBound as 20000, here will be strides – 1 to 12499, 12500 to 14999, 15000 to 17499, 17500 to maximum of order_item_order_id
+        You can check the data in the output path mentioned
+
+from pyspark.sql import SparkSession
+
+spark = SparkSession. \
+    builder. \
+    master('local'). \
+    appName('Create Dataframe over JDBC'). \
+    getOrCreate()
+
+orders = spark.read. \
+  format('jdbc'). \
+  option('url', 'jdbc:mysql://ms.itversity.com'). \
+  option('dbtable', 'retail_db.orders'). \
+  option('user', 'retail_user'). \
+  option('password', 'itversity'). \
+  load()
+
+orders.show()
+
+orderItems = spark.read. \
+    jdbc("jdbc:mysql://ms.itversity.com", "retail_db.order_items",
+          properties={"user": "retail_user",
+                      "password": "itversity",
+                      "numPartitions": "4",
+                      "partitionColumn": "order_item_order_id",
+                      "lowerBound": "10000",
+                      "upperBound": "20000"})
+
+orderItems.write.json('/user/training/bootcamp/pyspark/orderItemsJDBC')
+
+query = "(select order_status, count(1) from retail_db.orders group by order_status) t"
+queryData = spark.read. \
+    jdbc("jdbc:mysql://ms.itversity.com", query,
+         properties={"user": "retail_user",
+                     "password": "itversity"})
+
+queryData.show()
+view raw
+pyspark-create-dataframe-jdbc.py hosted with ❤ by GitHub
+
+Data Frame Operations – Overview
+
+Let us see overview about Data Frame Operations. It is one of the 2 ways we can process Data Frames.
+
+    Selection or Projection – select
+    Filtering data – filter or where
+    Joins – join (supports outer join as well)
+    Aggregations – groupBy and agg with support of functions such as sum, avg, min, max etc
+    Sorting – sort or orderBy
+    Analytics Functions – aggregations, ranking and windowing functions
+
+Spark SQL – Overview
+
+We can also use Spark SQL to process data in data frames.
+
+    We can get list of tables by using spark.sql('show tables')
+    We can register data frame as temporary view df.createTempView("view_name")
+    Output of show tables show the temporary tables as well
+    Once temp view is created, we can use SQL style syntax and run queries against the tables/views
+    Most of the hive queries will work out of the box
+
+Functions to manipulate data
+
+Let us quickly look into some of the functions available in Data Frames.
+
+    Main package for functions pyspark.sql.functions
+    We can import by saying from pyspark.sql import functions as sf
+    You will see many functions which are similar to the functions in traditional databases.
+    These can be categorized into
+        String manipulation
+        Date manipulation
+        Type casting
+        Expressions such as case when
+    We will see some of the functions in action
+        substring
+        lower, upper
+        trim
+        date_format
+        trunc
+        Type Casting
+        case when
+
+
+Next Topic →
+
+Filed Under: Data Engineering
+Start the discussion at discuss.itversity.com
+Primary Sidebar
+Search
+Search this website
+Fundamentals of Programming - Python 3
+Apache Spark 2 - Architecture and Core APIs
+Apache Spark 2 - Data Frame Operations and Spark SQL
+
+    Creating Data Frames and Pre-Defined functions
+    Data Frame Operations - Basic Transformations such as filtering, aggregations, joins etc
+    Data Frame Operations - Analytics Functions or Windowing Functions
+    Spark SQL - Basic Transformations such as filtering, aggregations, joins etc
+    Spark SQL - Analytics Functions or Windowing Functions
+    Different file formats and dealing with custom delimiters
+    Compression Concepts and Algorithms
+
+Apache Spark 2 - Building Streaming Pipelines using Kafka
+Return to Apache Spark 2 with Python 3 (pyspark)
+Recent Posts
+
+    Apache Spark 2 using Python 3 – Essentials
+    Subscribe – WhatsApp Broadcast lists
+    Case Study – Continuous Applications – Spark Structured Streaming
+    Data Engineering Immersion Bootcamp (Premium Live Series and Self-Paced) – Survey
+    Setup Spark Development Environment – PyCharm and Python
+
+Your certificates
+
+    Complete courses to earn certificates
+
+----------------------------------------------------------------------------------------------
+
+Data Frame Operations – Basic Transformations such as filtering, aggregations, joins etc
+
+As part of this session we will see basic transformations we can perform on top of Data Frames such as filtering, aggregations, joins etc. We will build end to end application by taking a simple problem statement.
+
+    Data Frame Operations – APIs
+    Problem Statement – Get daily product revenue
+    Projecting data using select, withColumn and selectExpr
+    Filtering data using where or filter
+    Joining Data Sets
+    Grouping data and performing aggregations
+    Sorting data
+    Development Life Cycle
+
+Data Frame Operations – APIs
+
+Let us recap about Data Frame Operations. It is one of the 2 ways we can process Data Frames.
+
+    Selection or Projection – select
+    Filtering data – filter or where
+    Joins – join (supports outer join as well)
+    Aggregations – groupBy and agg with support of functions such as sum, avg, min, max etc
+    Sorting – sort or orderBy
+    Analytics Functions – aggregations, ranking and windowing functions
+
+Problem Statement – Get daily product revenue
+
+Here is the problem statement for which we will be exploring Data Frame APIs to come up with final solution.
+
+    Get daily product revenue
+    orders – order_id, order_date, order_customer_id, order_status
+    order_items – order_item_id, order_item_order_id, order_item_product_id, order_item_quantity, order_item_subtotal, order_item_product_price
+    Data is comma separated
+    We will fetch data using spark.read.csv
+    Apply type cast functions to convert fields into their original type where ever is applicable.
+
+spark = SparkSession. \
+  builder. \
+  master('local'). \
+  appName('CSV Example'). \
+  getOrCreate()
+
+orders = spark.read. \
+  format('csv'). \
+  schema('order_id int, order_date string, order_customer_id int, order_status string'). \
+  load('/Users/itversity/Research/data/retail_db/orders')
+
+orders.printSchema()
+orders.show()
+
+orderItems = spark.read. \
+  format('csv'). \
+  schema('''order_item_id int, 
+            order_item_order_id int, 
+            order_item_product_id int, 
+            order_item_quantity int,
+            order_item_subtotal float,
+            order_item_product_price float
+         '''). \
+  load('/Users/itversity/Research/data/retail_db/order_items')
+
+orderItems.printSchema()
+orderItems.show()
+view raw
+pyspark-dataframe-01-csv-example.py hosted with ❤ by GitHub
+# In case you are using pycharm, first you need to create object of type SparkSession
+spark = SparkSession. \
+  builder. \
+  master('local'). \
+  appName('CSV Example'). \
+  getOrCreate()
+
+ordersCSV = spark.read. \
+  csv('/public/retail_db/orders'). \
+  toDF('order_id', 'order_date', 'order_customer_id', 'order_status')
+
+orderItemsCSV = spark.read. \
+  csv('/public/retail_db/order_items'). \
+  toDF('order_item_id', 'order_item_order_id', 'order_item_product_id', 
+       'order_item_quantity', 'order_item_subtotal', 'order_item_product_price')
+
+from pyspark.sql.types import IntegerType, FloatType
+
+orders = ordersCSV. \
+  withColumn('order_id', ordersCSV.order_id.cast(IntegerType())). \
+  withColumn('order_customer_id', ordersCSV.order_customer_id.cast(IntegerType()))
+
+orders.printSchema()
+orders.show()
+
+orderItems = orderItemsCSV.\
+    withColumn('order_item_id', orderItemsCSV.order_item_id.cast(IntegerType())). \
+    withColumn('order_item_order_id', orderItemsCSV.order_item_order_id.cast(IntegerType())). \
+    withColumn('order_item_product_id', orderItemsCSV.order_item_product_id.cast(IntegerType())). \
+    withColumn('order_item_quantity', orderItemsCSV.order_item_quantity.cast(IntegerType())). \
+    withColumn('order_item_subtotal', orderItemsCSV.order_item_subtotal.cast(FloatType())). \
+    withColumn('order_item_product_price', orderItemsCSV.order_item_product_price.cast(FloatType()))
+
+orderItems.printSchema()
+orderItems.show()
+view raw
+pyspark-dataframe-02-csv-example.py hosted with ❤ by GitHub
+
+Projecting data using select, withColumn and selectExpr
+
+Now let us see how we can project data the way we want using select.
+
+    Python classes are dynamic. It means we can change the structure of the class at run time.
+    In this case both orders and orderItems are of type DataFrame, but in orders we will be able to access its attributes and in orderItems we will be able to access its attributes (e. g.: orders.order_id and orderItems.order_item_id)
+    We can use select and fetch data from the fields we are looking for.
+    We can represent data using DataFrame.ColumnName or directly ‘ColumnName’ in select clause – e.g.: orders.select(orders.order_id, orders.order_date) and orders.select('order_id', 'order_date')
+    We can apply necessary functions to manipulate data while it is being projected – orders.select(substring('order_date', 1, 7)).show()
+    We can give aliases to the derived fields using alias function – orders.select(substring('order_date', 1, 7).alias('order_month')).show()
+    If we want to add new field derived from existing fields we can use withColumn function. First argument is alias and 2nd argument is data processing logic – orders.withColumn('order_month', substring('order_date', 1, 7).alias('order_month')).show()
+
+Filtering data using where or filter
+
+Data Frame have 2 APIs to filter the data, where and filter. They are just synonyms and you can use either of them for filtering.
+
+    You can use filter or where in 2 ways
+    One by using class.attributeName and comparing with values – e. g.: orders.where(orders.order_status == 'COMPLETE').show()
+    Other by passing conditions as literals – e. g.: orders.where('order_status = "COMPLETE"').show()
+    Make sure both orders and orderItems data frames are created
+    Let us see few more examples
+        Get orders which are either COMPLETE or CLOSED
+        Get orders which are either COMPLETE or CLOSED and placed in month of 2013 August
+        Get order items where order_item_subtotal is not equal to product of order_item_quantity and order_item_product_price
+        Get all the orders which are placed on first of every month
+
+# Get orders which are either COMPLETE or CLOSED
+orders.where('order_status = "COMPLETE" or order_status = "CLOSED"').show()
+orders.where('order_status in ("COMPLETE", "CLOSED")').show()
+orders.where((orders.order_status == 'COMPLETE') | (orders.order_status == 'CLOSED')).show()
+orders.where((orders.order_status == 'COMPLETE').__or__(orders.order_status == 'CLOSED')).show()
+orders.where(orders.order_status.isin('COMPLETE', 'CLOSED')).show()
+view raw
+pyspark-dataframes-filtering-01.py hosted with ❤ by GitHub
+# Get orders which are either COMPLETE or CLOSED and placed in month of 2013 August
+
+orders.where('order_status in ("COMPLETE", "CLOSED") and order_date like "2013-08%"').show()
+orders.where(orders.order_status.isin('COMPLETE', 'CLOSED').__and__(orders.order_date.like('2013-08%'))).show()
+view raw
+pyspark-dataframes-filtering-02.py hosted with ❤ by GitHub
+# Get order items where order_item_subtotal is not equal to product of order_item_quantity and order_item_product_price
+orderItems.where('order_item_subtotal != round(order_item_quantity * order_item_product_price, 2)').show()
+
+from pyspark.sql.functions import round
+orderItems.where(orderItems.order_item_subtotal != 
+                 round((orderItems.order_item_quantity * orderItems.order_item_product_price), 2)
+                ).show()
+view raw
+pyspark-dataframes-filtering-03.py hosted with ❤ by GitHub
+# Get all the orders which are placed on first of every month
+orders.where('date_format(order_date, "dd") = "01"').show()
+
+from pyspark.sql.functions import date_format
+orders.where(date_format(orders.order_date, 'dd') == '01').show()
+view raw
+pyspark-dataframes-filtering-04.py hosted with ❤ by GitHub
+
+Joining Data Sets
+
+Quite often we need to deal with multiple data sets which are related with each other.
+
+    We need to first understand the relationship with respect to data sets
+    All our data sets have relationships defined between them.
+        orders and order_items are transaction tables. orders is parent and order_items is child. Relationship is established between the two using order_id (in order_items, it is represented as order_item_order_id)
+        We also have product catalog normalized into 3 tables – products, categories and departments (with relationships established in that order)
+        We also have customers table
+        There is relationship between customers and orders – customers is parent data set as one customer can place multiple orders.
+        There is relationship between product catalog and order_items via products – products is parent data set as one product can be ordered as part of multiple order_items.
+    Determine the type of join – inner or outer (left or right or full)
+    Data Frames have an API called join to perform joins
+    We can make the join outer by passing additional argument
+    Let us see few examples
+        Get all the order items corresponding to COMPLETE or CLOSED orders
+        Get all the orders where there are no corresponding order_items
+        Check if there are any order_items where there is no corresponding order in orders data set
+
+# Get all the order items corresponding to COMPLETE or CLOSED orders
+
+orders.where('order_status in ("COMPLETE", "CLOSED")'). \
+  join(orderItems, orders.order_id == orderItems.order_item_order_id). \
+  show()
+view raw
+pyspark-dataframes-join-01.py hosted with ❤ by GitHub
+# Get all the orders where there are no corresponding order_items
+
+orders. \
+  join(orderItems, orders.order_id == orderItems.order_item_order_id, 'left'). \
+  where('order_item_order_id is null'). \
+  select('order_id', 'order_date', 'order_customer_id', 'order_status'). \
+  show()
+
+orders. \
+  join(orderItems, orders.order_id == orderItems.order_item_order_id, 'left'). \
+  where(orderItems.order_item_order_id.isNull()). \
+  select(orders.order_id, orders.order_date, orders.order_customer_id, orders.order_status). \
+  show()
+view raw
+pyspark-dataframes-join-02.py hosted with ❤ by GitHub
+# Check if there are any order_items where there is no corresponding order in orders data set
+
+orders. \
+  join(orderItems, orders.order_id == orderItems.order_item_order_id, 'right'). \
+  where('order_id is null'). \
+  select('order_item_id', 'order_item_order_id'). \
+  show()
+
+orders. \
+  join(orderItems, orders.order_id == orderItems.order_item_order_id, 'right'). \
+  where(orders.order_id.isNull()). \
+  select(orderItems.order_item_id, orderItems.order_item_order_id). \
+  show()
+view raw
+pyspark-dataframes-join-03.py hosted with ❤ by GitHub
+
+Grouping data and performing aggregations
+
+Many times we want to perform aggregations such as sum, average, minimum, maximum etc with in each group. We need to first group the data and then perform aggregation.
+
+    groupBy is the function which can be used to group the data on one or more columns
+    Once data is grouped we can perform all supported aggregations – sum, avg, min, max etc
+    We can invoke the functions directly or as part of agg
+    agg gives us more flexibility to give aliases to the derived fields
+    Let us see few examples
+        Get count by status from orders
+        Get revenue for each order id from order items
+        Get daily product revenue (order_date and order_item_product_id are part of keys, order_item_subtotal is used for aggregation)
+
+# Get count by status from orders
+orders.groupBy('order_status').count().show()
+orders.groupBy('order_status'). \
+  agg(count('order_status').alias('status_count')). \
+  show()
+view raw
+pyspark-dataframes-group-and-agg-01.py hosted with ❤ by GitHub
+# Get revenue for each order id from order items 
+orderItems.groupBy('order_item_order_id'). \
+  sum('order_item_subtotal'). \
+  show()
+
+from pyspark.sql.functions import round, sum
+orderItems.groupBy('order_item_order_id'). \
+  agg(round(sum('order_item_subtotal'), 2).alias('order_revenue')). \
+  show()
+view raw
+pyspark-dataframes-group-and-agg-02.py hosted with ❤ by GitHub
+# Get daily product revenue 
+# filter for complete and closed orders
+# groupBy order_date and order_item_product_id
+# Use agg and sum on order_item_subtotal to get revenue
+
+spark.conf.set('spark.sql.shuffle.partitions', '2')
+
+from pyspark.sql.functions import sum, round
+orders.where('order_status in ("COMPLETE", "CLOSED")'). \
+  join(orderItems, orders.order_id == orderItems.order_item_order_id). \
+  groupBy('order_date', 'order_item_product_id'). \
+  agg(round(sum('order_item_subtotal'), 2).alias('revenue')). \
+  show()
+
+orders.where('order_status in ("COMPLETE", "CLOSED")'). \
+  join(orderItems, orders.order_id == orderItems.order_item_order_id). \
+  groupBy(orders.order_date, orderItems.order_item_product_id). \
+  agg(round(sum(orderItems.order_item_subtotal), 2).alias('revenue')). \
+  show()
+view raw
+pyspark-dataframes-group-and-agg-03.py hosted with ❤ by GitHub
+
+Sorting data
+
+Now let us see how we can sort the data using sort or orderBy.
+
+    sort or orderBy can be used to sort the data
+    We can perform composite sorting by using multiple fields
+    By default data will be sorted in ascending order
+    We can change the order by using desc function
+    Let us see few examples
+        Sort orders by status
+        Sort orders by date and then by status
+        Sort order items by order_item_order_id and order_item_subtotal descending
+        Take daily product revenue data and sort in ascending order by date and then descending order by revenue.
+
+# Sort orders by status
+orders.sort('order_status').show()
+orders.orderBy('order_status').show()
+orders.orderBy(orders.order_status).show()
+view raw
+pyspark-dataframes-sorting-01.py hosted with ❤ by GitHub
+#Sort orders by date and then by status
+orders.sort('order_date', 'order_status').show()
+orders.orderBy(orders.order_date, orders.order_status).show()
+view raw
+pyspark-dataframes-sorting-02.py hosted with ❤ by GitHub
+# Sort order items by order_item_order_id and order_item_subtotal descending
+orderItems. \
+  sort(orderItems.order_item_order_id, orderItems.order_item_subtotal.desc()). \
+  show()
+
+orderItems. \
+  orderBy(orderItems.order_item_order_id, orderItems.order_item_subtotal.desc()). \
+  show()
+view raw
+pyspark-dataframes-sorting-03.py hosted with ❤ by GitHub
+# Take daily product revenue data and 
+# sort in ascending order by date and 
+# then descending order by revenue.
+
+spark.conf.set('spark.sql.shuffle.partitions', '2')
+
+from pyspark.sql.functions import sum, round
+
+dailyProductRevenue = orders.where('order_status in ("COMPLETE", "CLOSED")'). \
+  join(orderItems, orders.order_id == orderItems.order_item_order_id). \
+  groupBy(orders.order_date, orderItems.order_item_product_id). \
+  agg(round(sum(orderItems.order_item_subtotal), 2).alias('revenue'))
+
+dailyProductRevenueSorted = dailyProductRevenue. \
+  orderBy(dailyProductRevenue.order_date, dailyProductRevenue.revenue.desc())
+
+dailyProductRevenueSorted.show()
+view raw
+pyspark-dataframes-sorting-04.py hosted with ❤ by GitHub
+
+Development Life Cycle
+
+Let us develop the application using Pycharm and run it on the cluster.
+
+    Make sure application.properties have required input path and output path along with execution mode
+    Read orders and order_items data into data frames
+    Filter for complete and closed orders
+    Join with order_items
+    Aggregate to get revenue for each order_date and order_item_product_id
+    Sort in ascending order by date and then descending order by revenue
+    Save the output as CSV format
+    Validate using Pycharm
+    Ship it to the cluster, run it on the cluster and validate.
+----------------------------------------------------------------------------------
+[dev]
+executionMode = local
+input.base.dir = /Users/itversity/Research/data/retail_db
+output.base.dir = /Users/itversity/Research/data/bootcamp/pyspark
+
+[prod]
+executionMode = yarn-client
+input.base.dir = /public/retail_db
+output.base.dir = /user/training/bootcamp/pyspark
+
+----------------------------------------------------------------------------------------------------
+pyspark-dataframes-01-application.properties hosted with ❤ by GitHub
+
+import configparser as cp, sys
+from pyspark.sql import SparkSession
+
+props = cp.RawConfigParser()
+props.read('src/main/resources/application.properties')
+env = sys.argv[1]
+
+spark = SparkSession.\
+    builder.\
+    appName('Daily Product Revenue using Data Frame Operations').\
+    master(props.get(env, 'executionMode')).\
+    getOrCreate()
+
+spark.conf.set('spark.sql.shuffle.partitions', '2')
+
+inputBaseDir = props.get(env, 'input.base.dir')
+orders = spark.read. \
+  format('csv'). \
+  schema('''order_id INT,
+            order_date STRING,
+            order_customer_id INT,
+            order_status STRING
+         '''). \
+  load(inputBaseDir + '/orders')
+
+orderItems = spark.read. \
+  format('csv'). \
+  schema('''order_item_id INT,
+            order_item_order_id INT,
+            order_item_product_id INT,
+            order_item_quantity INT,
+            order_item_subtotal FLOAT,
+            order_item_product_price FLOAT
+         '''). \
+  load(inputBaseDir + '/order_items')
+
+from pyspark.sql.functions import sum, round
+dailyProductRevenue = orders. \
+    where('order_status in ("COMPLETE", "CLOSED")'). \
+    join(orderItems, orders.order_id == orderItems.order_item_order_id). \
+    groupBy('order_date', 'order_item_product_id'). \
+    agg(round(sum(orderItems.order_item_subtotal), 2).alias('revenue'))
+
+dailyProductRevenueSorted = dailyProductRevenue. \
+    orderBy(dailyProductRevenue.order_date, dailyProductRevenue.revenue.desc())
+
+outputBaseDir = props.get(env, 'output.base.dir')
+dailyProductRevenueSorted.write.csv(outputBaseDir + '/daily_product_revenue')
+view raw
+-------------------------------------------------------------------------------------------------
+pyspark-dataframes-02-daily-product-revenue.py hosted with ❤ by GitHub
+spark-submit \
+  --master yarn \
+  --deploy-mode client \
+  --conf spark.ui.port=12901 \
+  src/main/python/retail_db/df/DailyProductRevenueDFO.py \
+  prod
+view raw
+pyspark-dataframes-03-daily-product-revenue.sh hosted with ❤ by GitHub
+
+Exercises
+
+Try to develop programs for these exercises
+
+    Get number of closed or complete orders placed by each customer
+    Get revenue generated by each customer for the month of 2014 January (consider only closed or complete orders)
+    Get revenue generated by each product on monthly basis – get product name, month and revenue generated by each product (round off revenue to 2 decimals)
+    Get revenue generated by each product category on daily basis – get category name, date and revenue generated by each category (round off revenue to 2 decimals)
+    Get the details of the customers who never placed orders
+----------------------------------------------------------------------------------------------------------------------------
+
+
+

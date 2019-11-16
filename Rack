@@ -1,0 +1,8 @@
+Hard drivers are more importent than any thing else. Rack is nothing but a contrainer it hold no.of hard drives. 
+
+Between operating system and RACK there will be a network switch to access the data from RACK. If the operating system failes automatically it switch to other operating systems. 
+
+If you external user want to access you data form RACK. There is a separate machine (Fireall and Separate switch) to access data...it will not allow directly hit to machine. (Writting swith (Private) and Accessing switch is different(Public)).
+
+
+EC2(Elastic clud compute) - Nothing but Virtual Machine in AWS data center. 

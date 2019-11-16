@@ -1,0 +1,74 @@
+1) map.values
+2) Hadoop read and write 
+3) Why tez is used for Hive ? How to optimize the hive queries ? Partition and bucketing in hive ?
+4) Diffence between ORC and Parqet file format 
+5) Ziping the files - Splitable and none-splitable files
+6) Aggrigate by key vs reduced by key ?
+7) what are the transformation and actions ?
+8) Spark and hadoop versions ?
+9) How to check the blocks in given file ? hdfs fsck /public/randomtextwriter/part-m-00000 -files -blocks -locations
+10) Differnce between Datafame and Dataset ?
+11) Python Dataset is possibile or not ?
+12) Spark Dataframe vs Pandas Dataframe
+13) When we go for pandas data frame 
+14) What are the libraries you have used in python 
+15) Migration python version from latest version 
+16) How to automate the test cases in Spark/Python Script 
+17) Hadoop 3 version details
+18) CI/CD 
+19) Yarn - Applicaton Master vs Application Manager 
+20) ZIP vs Snappy
+21) Any recent perfomance tunning you have done
+22) Dynmaci resouce allowcation
+23) ETL Atchitecture 
+24) Normalization vs De-Normalization 
+25) How to covert Spark Dataframe to Pandas Dataframe
+26) Spark Core - Codding 
+27) MSCK command in Hive 
+28) On what cases the data will be spill to disk
+29) rank vs dense rank
+30) when we go for spark bucketting - not is Skew 
+31) Distribution version
+
+1) Which one one is best to chache ? Serialization and De-Serializaion ? which is more useful?
+2) Check point 
+3) Hbase 
+4) how to handle the production jobs failures ? UI
+5) Schedular 
+6) Unification
+7) join with DB
+8) Main question which mostly asked ?
+9) Spark-submit 
+10) Spark Streeming?
+11) Hbase Drawback ?
+12) rank and dendec rank
+13) Yarn Logs 
+14) DEV, QA and prod movement 
+15) How to handly the properties of environment
+16) How encrypt or decrypt of the passwords
+17) How to handle the join in RDD with mulitiple keys as a join key
+
+1)How to generate seqance number in Spark 
+2) What will happen if the dag is too big
+3)Python closer vs Spark Closer 
+4)How to convert Normalize data to demoralize form
+5)Without using  Broadcast variable how can we improve the performance
+6)In my HIVE table, I am loading only 5 records every day and after a year 5000 records loaded to my table.. but while querying it is take long time...Why ?
+7)How to control number of nodes (200)
+
+MapParitionwithIndex
+Python muliti threading
+JDBC parameters along with num partitions
+Shuffling will happen on Map Parition 
+How are you scheduling your jobs? 
+Yarn alogaridham 
+Checkpoint properties 
+Spark-Submit command parameters
+How many stages in reducedByKey in Dag ?
+
+
+
+
+Python - collection are stored in-memory and they dont have thearing capacity in python
+
+Dd@3052013
